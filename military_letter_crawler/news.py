@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 from enum import Enum
+import re
 
 class NaverNews:
     soup = ""
@@ -37,10 +38,19 @@ class GoogleNews:
         for i in range(0, num):
             print(soup.select(".DY5T1d")[i].get_text())
 
+class Corona:
+    def getTodayData(self):
+        soup = BeautifulSoup(requests.get("http://ncov.mohw.go.kr/").content, "html.parser")
+        for child in soup.select(".liveNum > .liveNum"):
+            print(re.sub('\n\+|\?\n|\n','',child.get_text().strip()))
+
+
 #Main 4 test
 if __name__ == "__main__":
     #naverNews = NaverNews()
     #soup = naverNews.getNewsPage()
     #naverNews.getNewsTitles(soup, naverNews.NewsType.POLITIC)
-    gNews = GoogleNews()
-    gNews.getNewsTitles(GoogleNews.CONST_HEADLINE_URL, 5)
+    #gNews = GoogleNews()
+    #gNews.getNewsTitles(GoogleNews.CONST_HEADLINE_URL, 5)
+    cor = Corona()
+    cor.getTodayData()
