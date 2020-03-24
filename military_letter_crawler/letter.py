@@ -62,6 +62,33 @@ class LetterClient:
         print(f'Register failed. [{result["resultMsg"] if "resultMsg" in result else "Unknown Error"}]')
         return False
 
+    def send_letter(self, name, title, content):
+        cafes = self.get_cafes()
+        if name not in cafes:
+            print(f'No Cafe with name: [{name}].')
+            return False
+        if cafes[name] is None:
+            print(f'Cafe[{name}] is not open yet.')
+            return False
+
+        mgr_seq = self._get_mgr_seq(*cafes[name])
+
+        endpoint = '/consolLetter/insertConsolLetterA.do'
+        data = {
+            'boardDiv': '',
+            'tempSaveYn': 'N',
+            'sympathyLetterEditorFileGroupSeq': '',
+            'fileGroupMgrSeq': '',
+            'fileMgrSeq': '',
+            'sympathyLetterMgrSeq': '',
+            'traineeMgrSeq': mgr_seq,
+            'sympathyLetterSubject': title,
+            'sympathyLetterContent': content,
+        }
+
+        result = self._post(endpoint, data)
+        result = json.loads(result, encoding='utf-8')
+
     def get_cafes(self):
         endpoint = '/eduUnitCafe/viewEduUnitCafeMain.do'
         data = {}
@@ -90,6 +117,22 @@ class LetterClient:
                 continue
 
         return cafe_table
+
+    def _get_mgr_seq(self, edu_seq, train_unit_code):
+        endpoint = '/consolLetter/viewConsolLetterMain.do'
+        data = {
+            'trainUnitEduSeq': edu_seq,
+            'trainUnitCd': train_unit_code,
+        }
+        result = self._post(endpoint, data)
+        soup = BeautifulSoup(result, 'html.parser')
+
+        letter_box = soup.select('.letter-card-box')[0]
+        regex = re.compile('\'\d+\'')
+        codes = regex.findall(letter_box['href'])
+
+        mgr_seq = map(lambda x: int(x[1:-1]), codes)
+        return mgr_seq
 
     def get_group_code(self, group_name):
         group_code_table = {
