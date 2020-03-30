@@ -59,41 +59,45 @@ def groupFeed(session, group_name, count = 10, feed_sort = 'CHRONOLOGICAL'):
 
     print(response.content)
 
-def readTimeFile(pageName): #If file doesn't exist, return -1
-    filePath = pageName + '_time.dat'
-    if os.path.isfile(filePath):
-        with open(filePath, encoding='utf-8') as r:
-            return r.readline()
-    return -1
 
-def writeTimeFile(pageName, timeData):
-    with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
-        w.write(timeData)
+# --Class PageFeed : Getting facebook page's writing--
+class PageFeedCrawler:
+    def readTimeFile(self, pageName): #If file doesn't exist, return -1
+        filePath = pageName + '_time.dat'
+        if os.path.isfile(filePath):
+            with open(filePath, encoding='utf-8') as r:
+                return r.readline()
+        return -1
 
-def remNotice(respSoup):
-    i = 0
-    for child in respSoup:
-        if(child.select('._449j')):
-            i += 1
-        else:
-            break
-    return respSoup[i : int(len(respSoup))]
+    def writeTimeFile(self, pageName, timeData):
+        with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
+            w.write(timeData)
+
+    def remNotice(self, respSoup):
+        i = 0
+        for child in respSoup:
+            if(child.select('._449j')):
+                i += 1
+            else:
+                break
+        return respSoup[i : int(len(respSoup))]
+
 
 #  !Need to get pageName from page's URL manually!
-def pageFeed(pageName):
-    req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
-    soup = BeautifulSoup(req.content, "html.parser")
+    def pageFeed(self, pageName):
+        req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
+        soup = BeautifulSoup(req.content, "html.parser")
 
-    respSoup = remNotice(soup.select('._4-u2 ._4-u8'))
+        respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
 
-    timeid = readTimeFile(pageName)
-    writeTimeFile(pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
-    for child in respSoup:
-        inf = child.get_text().split(' · ')[0]
-        body = child.get_text().split(' · ')[1]
-        if(inf.split('대나무숲')[1] == timeid):
-            break
-        print(inf + "----" + body)
+        timeid = self.readTimeFile(pageName)
+        self.writeTimeFile(pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
+        for child in respSoup:
+            inf = child.get_text().split(' · ')[0]
+            body = child.get_text().split(' · ')[1]
+            if(inf.split('대나무숲')[1] == timeid):
+                break
+            print(inf + "----" + body)
 
 if __name__ == "__main__":
     '''
@@ -113,4 +117,4 @@ if __name__ == "__main__":
     else:
         print('로그인 실패')
     '''
-    pageFeed('SKKUBamboo')
+    PageFeedCrawler.pageFeed('SKKUBamboo')
