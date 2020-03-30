@@ -5,15 +5,11 @@ import os.path
 from bs4 import BeautifulSoup
 
 '''
-원본 코드 : https://gist.github.com/UndergroundLabs/fad38205068ffb904685
-'''
-
 def login(session, email, password):
+    # 원본 코드 : https://gist.github.com/UndergroundLabs/fad38205068ffb904685
 
-    '''
-    세션으로 페이스북 로그인을 시도하는 함수  
+    세션으로 페이스북 로그인을 시도하는 함수
     성공 여부를 bool값으로 반환함 (`True` : 성공)
-    '''
 
     # Facebook 쿠키 로드를 위한 홈페이지 탐색
     response = session.get('https://m.facebook.com')
@@ -35,44 +31,23 @@ def login(session, email, password):
     else:
         print(response.status_code)
         return False
-
-
-def groupFeed(session, group_name, count = 10, feed_sort = 'CHRONOLOGICAL'):
-
-    '''
-    로그인 성공 이후 특정 그룹의 뉴스 피드를 크롤링하여 반환하는 함수  
-    리턴 형태는 미정.
-
-    `group_name` : 그룹의 별명 또는 id.  
-    ex) 생활코딩의 경우 `codingeverybody` 또는 `174499879257223`
-
-    `count` : 가져올 피드의 개수
-
-    `feed_sort` : 뉴스 피드의 순서 결정하는 param. 허용되는 값은 다음과 같음.
-
-    인기 게시글 : `TOP_POSTS`  
-    최근 활동   : `RECENT_ACTIVITY`  
-    최근 게시글 : `CHRONOLOGICAL`
     '''
 
-    response = session.get('https://facebook.com/groups/' + group_name + '/?sorting_setting=' + feed_sort)
+#Will be changed : Managing page/group data for reading
+def readTimeFile(pageName): #If file doesn't exist, return -1
+    filePath = pageName + '_time.dat'
+    if os.path.isfile(filePath):
+        with open(filePath, encoding='utf-8') as r:
+            return r.readline()
+    return -1
 
-    print(response.content)
+def writeTimeFile(pageName, timeData):
+    with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
+        w.write(timeData)
 
 
-# --Class PageFeed : Getting facebook page's writing--
-class PageFeedCrawler:
-    def readTimeFile(self, pageName): #If file doesn't exist, return -1
-        filePath = pageName + '_time.dat'
-        if os.path.isfile(filePath):
-            with open(filePath, encoding='utf-8') as r:
-                return r.readline()
-        return -1
-
-    def writeTimeFile(self, pageName, timeData):
-        with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
-            w.write(timeData)
-
+# --Class PageFeed : Get facebook page/group's writing--
+class FacebookCrawler:
     def remNotice(self, respSoup):
         i = 0
         for child in respSoup:
@@ -90,14 +65,23 @@ class PageFeedCrawler:
 
         respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
 
-        timeid = self.readTimeFile(pageName)
-        self.writeTimeFile(pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
+        timeid = readTimeFile(pageName)
+        writeTimeFile(pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
         for child in respSoup:
             inf = child.get_text().split(' · ')[0]
             body = child.get_text().split(' · ')[1]
             if(inf.split('대나무숲')[1] == timeid):
                 break
             print(inf + "----" + body)
+
+    #Implementing.. need to add id checking feature
+    def groupFeed(self, groupName):
+        req = requests.get("https://www.facebook.com/groups/" + groupName)
+
+        splited = req.content.decode('utf-8').split('<div data-testid="post_message" class="_5pbx userContent _3576" data-ft="&#123;&quot;tn&quot;:&quot;K&quot;&#125;"><p>')
+        for i in range(1, len(splited)):
+            print(splited[i].split("</p>")[0].replace("<br />", "\n"))
+
 
 if __name__ == "__main__":
     '''
@@ -117,4 +101,5 @@ if __name__ == "__main__":
     else:
         print('로그인 실패')
     '''
-    PageFeedCrawler.pageFeed('SKKUBamboo')
+    pfc = FacebookCrawler()
+    pfc.groupFeed('System.out.Coding')
