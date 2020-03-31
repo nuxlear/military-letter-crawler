@@ -3,11 +3,11 @@ from bs4 import BeautifulSoup
 
 class WeatherCrawler:
 
-    def parseWeatherInfo(self, tBodySoup, mode = 0):
+    def parseWeatherInfo(self, tBodySoup):
         mTemp = tBodySoup.select(".cell")[0].select(".temp")[0].get_text()
         aTemp = tBodySoup.select(".cell")[1].select(".temp")[0].get_text()
 
-        if mode == 1:
+        if len(tBodySoup.select("th")) == 0:
             date = "내일"
             mSplit = tBodySoup.select(".cell")[0].select(".info")[0].get_text().split("강수확률")
             aSplit = tBodySoup.select(".cell")[1].select(".info")[0].get_text().split('강수확률')
@@ -26,9 +26,9 @@ class WeatherCrawler:
         respSoup = soup.select("table")
 
         result = []
-        result.append(self.parseWeatherInfo(respSoup[1].select("td")[1], 1))
+        result.append(self.parseWeatherInfo(respSoup[1].select("td")[1]))
         for child in respSoup[2].select("tr"):
-            result.append(self.parseWeatherInfo(child, 0))
+            result.append(self.parseWeatherInfo(child))
 
         return result
 
