@@ -58,23 +58,42 @@ class FacebookCrawler:
                 break
         return respSoup[i : int(len(respSoup))]
 
-
 #  !Need to get pageName from page's URL manually!
+#     def pageFeed(self, pageName):
+#         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
+#         soup = BeautifulSoup(req.content, "html.parser")
+#
+#         respSoup = self.remNotice(soup.select('.userContentWrapper'))
+#         # respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
+#
+#         timeid = self.readTimeFile('p_' + pageName)
+#         time_regex = re.compile('(방금 전)|(\d+분)|(\d+시간)|(\d+년 \d+월 \d+일 오[전후] \d+:\d+)')
+#         time_str = time_regex.search(respSoup[0].get_text())[0]
+#         self.writeTimeFile('p_' + pageName, time_str)
+#         # self.writeTimeFile('p_' + pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
+#         for child in respSoup:
+#             inf = child.get_text().split(' · ')[0]
+#             body = child.get_text().split(' · ')[1]
+#             if(inf.split('대나무숲')[1] == timeid):
+#                 break
+#             print(inf + "----" + body)
+
     def pageFeed(self, pageName):
         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
         soup = BeautifulSoup(req.content, "html.parser")
 
-        respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
+        contents = soup.select('.userContentWrapper')
+        contents_no_notice = [x for x in contents if not x.select('._449j')]
 
-        timeid = self.readTimeFile('p_' + pageName)
-        self.writeTimeFile('p_' + pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
-        for child in respSoup:
-            inf = child.get_text().split(' · ')[0]
-            body = child.get_text().split(' · ')[1]
-            if(inf.split('대나무숲')[1] == timeid):
-                break
-            print(inf + "----" + body)
+        texts = []
+        for content in contents_no_notice:
+            user_content = content.select('.userContent p')
+            text = ' '.join(map(lambda x: x.text, user_content))
+            texts.append(text)
 
+        concat = '\n'.join(texts)
+        print(f'----\n{concat}\n---')
+        return texts
 
     def groupFeed(self, groupName):
         req = requests.get("https://www.facebook.com/groups/" + groupName)
@@ -82,7 +101,7 @@ class FacebookCrawler:
         dataArea = req.content.decode('utf-8').split('id="newsFeedHeading">뉴스피드')[1]
         #print(dataArea)
         bodySplited = dataArea.split('<div data-testid="post_message" class="_5pbx userContent _3576" data-ft="&#123;&quot;tn&quot;:&quot;K&quot;&#125;"><p>')
-        idSplited = dataArea.split('/groups/System.out.Coding/permalink/')
+        idSplited = dataArea.split(f'/groups/{groupName}/permalink/')
         #print(idSplited[1])
         timeid = self.readTimeFile('g_' + groupName)
         #print(timeid)
@@ -113,4 +132,22 @@ if __name__ == "__main__":
         print('로그인 실패')
     '''
     pfc = FacebookCrawler()
-    pfc.groupFeed('System.out.Coding')
+    # pfc.groupFeed('System.out.Coding')
+    pages = [
+        'thisisgamecom',
+        'SKKUBamboo',
+        'yonseibamboo',
+        'SNUBamboo',
+        'ggyuggyuggyaggya',
+    ]
+
+    for page in pages:
+        pfc.pageFeed(page)
+
+    groups = [
+        'KerasKorea',
+        'System.out.Coding',
+    ]
+
+    for group in groups:
+        pfc.groupFeed(group)
