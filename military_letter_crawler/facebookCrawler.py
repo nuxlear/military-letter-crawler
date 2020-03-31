@@ -33,21 +33,22 @@ def login(session, email, password):
         return False
     '''
 
-#Will be changed : Managing page/group data for reading
-def readTimeFile(pageName): #If file doesn't exist, return -1
-    filePath = pageName + '_time.dat'
-    if os.path.isfile(filePath):
-        with open(filePath, encoding='utf-8') as r:
-            return r.readline()
-    return -1
-
-def writeTimeFile(pageName, timeData):
-    with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
-        w.write(timeData)
 
 
+#TODO - Should be changed : Managing page/group data for reading
 # --Class PageFeed : Get facebook page/group's writing--
 class FacebookCrawler:
+    def readTimeFile(self, pageName): #If file doesn't exist, return -1
+        filePath = pageName + '_time.dat'
+        if os.path.isfile(filePath):
+            with open(filePath, encoding='utf-8') as r:
+                return r.readline()
+        return -1
+
+    def writeTimeFile(self, pageName, timeData):
+        with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
+            w.write(timeData)
+
     def remNotice(self, respSoup):
         i = 0
         for child in respSoup:
@@ -65,8 +66,8 @@ class FacebookCrawler:
 
         respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
 
-        timeid = readTimeFile(pageName)
-        writeTimeFile(pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
+        timeid = self.readTimeFile('p_' + pageName)
+        self.writeTimeFile('p_' + pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
         for child in respSoup:
             inf = child.get_text().split(' · ')[0]
             body = child.get_text().split(' · ')[1]
@@ -74,13 +75,23 @@ class FacebookCrawler:
                 break
             print(inf + "----" + body)
 
-    #Implementing.. need to add id checking feature
+
     def groupFeed(self, groupName):
         req = requests.get("https://www.facebook.com/groups/" + groupName)
 
-        splited = req.content.decode('utf-8').split('<div data-testid="post_message" class="_5pbx userContent _3576" data-ft="&#123;&quot;tn&quot;:&quot;K&quot;&#125;"><p>')
-        for i in range(1, len(splited)):
-            print(splited[i].split("</p>")[0].replace("<br />", "\n"))
+        dataArea = req.content.decode('utf-8').split('id="newsFeedHeading">뉴스피드')[1]
+        #print(dataArea)
+        bodySplited = dataArea.split('<div data-testid="post_message" class="_5pbx userContent _3576" data-ft="&#123;&quot;tn&quot;:&quot;K&quot;&#125;"><p>')
+        idSplited = dataArea.split('/groups/System.out.Coding/permalink/')
+        #print(idSplited[1])
+        timeid = self.readTimeFile('g_' + groupName)
+        #print(timeid)
+        self.writeTimeFile('g_' + groupName, idSplited[1].split('/')[0])
+        for i in range(1, len(bodySplited)):
+            if idSplited[i].split('/')[0] == timeid:
+                break;
+            print(idSplited[i].split('/')[0] )
+            print(bodySplited[i].split("</p>")[0].replace("<br />", "\n"))
 
 
 if __name__ == "__main__":
