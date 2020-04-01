@@ -11,6 +11,7 @@ Python 3.7 에서 작성된 코드입니다. 정상 동작을 위해 Python 3 �
 ```text
 requests
 beautifulsoup4
+Comment
 ```
 
 ## Usage
@@ -24,3 +25,5 @@ client.login('username@email.com', 'password')
 ## Contribution
 
 - [Junwon Hwang](https://github.com/nuxlear)
+- [Wonmo Kang](https://github.com/DropFL)
+- [Sunghee Ryu](https://github.com/S4nop)
