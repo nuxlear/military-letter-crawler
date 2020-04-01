@@ -3,6 +3,7 @@ import requests
 import urllib.parse
 import os.path
 from bs4 import BeautifulSoup
+from bs4 import Comment
 
 '''
 def login(session, email, password):
@@ -49,6 +50,12 @@ class FacebookCrawler:
         with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
             w.write(timeData)
 
+    def remDup(self, html, oldTimeID):
+        for child in reversed(html):
+            html.pop()
+            if(child.find('a', {'class':'_5pcq'})['href'] == oldTimeID):
+                break;
+
     def remNotice(self, respSoup):
         i = 0
         for child in respSoup:
@@ -78,40 +85,55 @@ class FacebookCrawler:
 #                 break
 #             print(inf + "----" + body)
 
-    def pageFeed(self, pageName):
+    def pageFeed(self, pageName, count = 5):
         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
         soup = BeautifulSoup(req.content, "html.parser")
 
         contents = soup.select('.userContentWrapper')
         contents_no_notice = [x for x in contents if not x.select('._449j')]
 
+        newTimeID = oldTimeID = self.readTimeFile('p_' + pageName)
+
+        if oldTimeID != -1:
+            self.remDup(contents_no_notice, oldTimeID)
+        contents_reversed = list(reversed(contents_no_notice))
+
         texts = []
-        for content in contents_no_notice:
-            user_content = content.select('.userContent p')
+        for i in range(0, min(count, len(contents_reversed))):
+            newTimeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
+            user_content = contents_reversed[i].find_all(attrs={'data-testid': 'post_message'})
             text = ' '.join(map(lambda x: x.text, user_content))
+            print(text)
             texts.append(text)
 
-        concat = '\n'.join(texts)
-        print(f'----\n{concat}\n---')
+        self.writeTimeFile('p_' + pageName, newTimeID)
         return texts
 
-    def groupFeed(self, groupName):
+
+    def groupFeed(self, groupName, count = 5):
         req = requests.get("https://www.facebook.com/groups/" + groupName)
+        mainSoup = BeautifulSoup(req.content, 'html.parser')
 
-        dataArea = req.content.decode('utf-8').split('id="newsFeedHeading">뉴스피드')[1]
-        #print(dataArea)
-        bodySplited = dataArea.split('<div data-testid="post_message" class="_5pbx userContent _3576" data-ft="&#123;&quot;tn&quot;:&quot;K&quot;&#125;"><p>')
-        idSplited = dataArea.split(f'/groups/{groupName}/permalink/')
-        #print(idSplited[1])
-        timeid = self.readTimeFile('g_' + groupName)
-        #print(timeid)
-        self.writeTimeFile('g_' + groupName, idSplited[1].split('/')[0])
-        for i in range(1, len(bodySplited)):
-            if idSplited[i].split('/')[0] == timeid:
-                break;
-            print(idSplited[i].split('/')[0] )
-            print(bodySplited[i].split("</p>")[0].replace("<br />", "\n"))
+        commentData = mainSoup.find_all(string=lambda text: isinstance(text, Comment))
+        soup = BeautifulSoup(bytes(commentData[1], 'utf-8'), 'html.parser')
+        contents = soup.select('._3ccb')
 
+        newTimeID = oldTimeID = self.readTimeFile('g_' + groupName)
+        if oldTimeID != -1:
+            self.remDup(contents, oldTimeID)
+        contents_reversed = list(reversed(contents))
+
+        texts = []
+        for i in range(0, min(count, len(contents_reversed))):
+            newTimeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
+
+            user_content = contents_reversed[i].find_all(attrs={'data-testid':'post_message'})
+            text = '\n[--Indented Text--]\n'.join(map(lambda x: x.text, user_content))
+            print(text)
+            texts.append(text)
+
+        self.writeTimeFile('g_' + groupName, newTimeID)
+        return texts
 
 if __name__ == "__main__":
     '''
@@ -134,15 +156,15 @@ if __name__ == "__main__":
     pfc = FacebookCrawler()
     # pfc.groupFeed('System.out.Coding')
     pages = [
-        'thisisgamecom',
+    #    'thisisgamecom',
         'SKKUBamboo',
-        'yonseibamboo',
-        'SNUBamboo',
-        'ggyuggyuggyaggya',
+    #    'yonseibamboo',
+    #    'SNUBamboo',
+    #    'ggyuggyuggyaggya',
     ]
 
     for page in pages:
-        pfc.pageFeed(page)
+        pfc.pageFeed(page, 100)
 
     groups = [
         'KerasKorea',
