@@ -18,7 +18,7 @@ class WeatherCrawler:
             morning = mTemp + "℃ - " + tBodySoup.select(".cell")[0].select(".info")[0].get_text()
             afternoon = aTemp + "℃ - " + tBodySoup.select(".cell")[1].select(".info")[0].get_text()
 
-        return (date, morning, afternoon)
+        return '(' + date + ', ' + morning + ', ' + afternoon + ')'
 
     def getWeather(self):
         req = requests.get("https://weather.naver.com/rgn/townWetr.nhn?naverRgnCd=15230253")
@@ -30,7 +30,7 @@ class WeatherCrawler:
         for child in respSoup[2].select("tr"):
             result.append(self.parseWeatherInfo(child))
 
-        return result
+        return '\n'.join(result)
 
 
 if __name__ == "__main__":
