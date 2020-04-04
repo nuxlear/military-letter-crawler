@@ -98,7 +98,7 @@ class FacebookCrawler:
             texts.append(text)
 
         self.writeTimeData(pageName, 'Page', timeID)
-        return texts
+        return '\n'.join(texts)
 
 
     def groupFeed(self, groupName):
@@ -127,7 +127,7 @@ class FacebookCrawler:
             texts.append(text)
 
         self.writeTimeData(groupName, 'Group', timeID)
-        return texts
+        return '\n'.join(texts)
 
     def autoRunFromFile(self):
         result = []
@@ -199,7 +199,14 @@ class LetterClient:
         return False
 
     def send_letter(self, name, title, content):
+        chkedContent = self.splitContent(content)
 
+
+        for cont in chkedContent:
+            print("cont-------------" + cont + "\n")
+            self.send(name, title, cont)
+
+    def send(self, name, title, content):
         cafes = self.get_cafes()
         if name not in cafes:
             print(f'No Cafe with name: [{name}].')
@@ -207,17 +214,8 @@ class LetterClient:
         if cafes[name] is None:
             print(f'Cafe[{name}] is not open yet.')
             return False
+
         mgr_seq = self._get_mgr_seq(*cafes[name])
-
-
-        chkedContent = self.splitContent(content)
-        print(chkedContent)
-
-        for cont in chkedContent:
-            self.send(mgr_seq, title, cont)
-
-    def send(self,mgr_seq, title, content):
-
         endpoint = '/consolLetter/insertConsolLetterA.do'
         data = {
             'boardDiv': '',
@@ -239,19 +237,18 @@ class LetterClient:
         splited = content.split('\n')
         slen = 0
         bodies = []
-        print(len(splited))
         for i in range(0, len(splited)):
-            print('loop : ' + str(slen) + " " + str(len(splited[i])))
             if slen + len(splited[i]) > 1450:
                 bodies.append('\n'.join(splited[:i - 1]) + '\n' +splited[i][:1450 - slen])
-                bodies.append(self.splitContent(splited[i][1450-slen + 1:] + '\n' + '\n'.join(splited[i + 1:])))
+                bodies += self.splitContent(splited[i][1450-slen:] + '\n' + '\n'.join(splited[i + 1:]))
                 return bodies
             slen += len(splited[i])
             if i == 24:
                 bodies.append("\n".join(splited[:i]))
-                bodies.append(self.splitContent('\n'.join(splited[i + 1:])))
+                bodies += self.splitContent('\n'.join(splited[i + 1:]))
                 return bodies
-        return bodies.append(content)
+        bodies.append(content)
+        return bodies
 
     def get_cafes(self):
         endpoint = '/eduUnitCafe/viewEduUnitCafeMain.do'
@@ -440,4 +437,4 @@ if __name__ == "__main__":
     lc = LetterClient()
     #print('\n'.join(newsList))
     lc.login("rshtiger@naver.com", "")
-    lc.send_letter("김재이", "newsTest", fbcResult)
+    lc.send_letter("김재이", ".", fbcResult)
