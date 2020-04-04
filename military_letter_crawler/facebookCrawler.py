@@ -2,6 +2,7 @@ import argparse
 import requests
 import urllib.parse
 import os.path
+import json
 from bs4 import BeautifulSoup
 from bs4 import Comment
 
@@ -36,19 +37,57 @@ def login(session, email, password):
 
 
 
-#TODO - Should be changed : Managing page/group data for reading
 # --Class PageFeed : Get facebook page/group's writing--
+'''
+Uage
+fbc = FacebookCrawler()
+fbc.set_user("username")
+
+fbc.addPagetoList or GroupList
+fbc.auto~~.
+or
+fbc.pageFeed(...)
+'''
 class FacebookCrawler:
-    def readTimeFile(self, pageName): #If file doesn't exist, return -1
-        filePath = pageName + '_time.dat'
+    userName = ""
+    targList = dict()
+
+    def set_user(self, uname):
+        self.userName = uname
+        filePath = 'user_' + uname + '.dat'
         if os.path.isfile(filePath):
             with open(filePath, encoding='utf-8') as r:
-                return r.readline()
-        return -1
+               self.targList = json.load(r)
+            return
+        self.initDict()
 
-    def writeTimeFile(self, pageName, timeData):
-        with open(pageName + '_time.dat', mode='wt', encoding='utf-8') as w:
-            w.write(timeData)
+    def initDict(self):
+        self.targList['Page'] = dict()
+        self.targList['Group'] = dict()
+
+    def addPagetoList(self, page_Name, count = 5):
+        if page_Name in self.targList['Page']:
+            return
+        self.targList['Page'][page_Name] = dict()
+        self.targList["Page"][page_Name]['tData'] = ""
+        self.targList['Page'][page_Name]['count'] = count
+
+    def addGrouptoList(self, group_Name, count = 5):
+        if group_Name in self.targList['Group']:
+            return
+        self.targList['Group'][group_Name] = dict()
+        self.targList['Group'][group_Name]['tData'] = ""
+        self.targList['Group'][group_Name]['count'] = count
+
+    def getTimeData(self, targName, targType): #If page doesn't exist in file, return -1
+        return self.targList[targType][targName]["tData"] if self.targList[targType][targName]['tData'] != "" else -1, self.targList[targType][targName]['count']
+
+    def writeTimeData(self, pageName, targType, timeData):
+        self.targList[targType][pageName]['tData'] = timeData
+
+    def writeUserFile(self, data):
+        with open('user_' + self.userName + '.dat', mode='wt', encoding='utf-8') as w:
+            json.dump(self.targList, w, indent="\t")
 
     def remDup(self, html, oldTimeID):
         for child in reversed(html):
@@ -65,52 +104,38 @@ class FacebookCrawler:
                 break
         return respSoup[i : int(len(respSoup))]
 
-#  !Need to get pageName from page's URL manually!
-#     def pageFeed(self, pageName):
-#         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
-#         soup = BeautifulSoup(req.content, "html.parser")
-#
-#         respSoup = self.remNotice(soup.select('.userContentWrapper'))
-#         # respSoup = self.remNotice(soup.select('._4-u2 ._4-u8'))
-#
-#         timeid = self.readTimeFile('p_' + pageName)
-#         time_regex = re.compile('(방금 전)|(\d+분)|(\d+시간)|(\d+년 \d+월 \d+일 오[전후] \d+:\d+)')
-#         time_str = time_regex.search(respSoup[0].get_text())[0]
-#         self.writeTimeFile('p_' + pageName, time_str)
-#         # self.writeTimeFile('p_' + pageName, respSoup[0].get_text().split(' · ')[0].split('대나무숲')[1])
-#         for child in respSoup:
-#             inf = child.get_text().split(' · ')[0]
-#             body = child.get_text().split(' · ')[1]
-#             if(inf.split('대나무숲')[1] == timeid):
-#                 break
-#             print(inf + "----" + body)
-
-    def pageFeed(self, pageName, count = 5):
+    def pageFeed(self, pageName):
+        if self.userName == "":
+            print("Need username")
+            return
         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
         soup = BeautifulSoup(req.content, "html.parser")
 
         contents = soup.select('.userContentWrapper')
         contents_no_notice = [x for x in contents if not x.select('._449j')]
 
-        newTimeID = oldTimeID = self.readTimeFile('p_' + pageName)
+        timeID, count = self.getTimeData(pageName, 'Page')
 
-        if oldTimeID != -1:
-            self.remDup(contents_no_notice, oldTimeID)
+        if timeID != -1:
+            self.remDup(contents_no_notice, timeID)
         contents_reversed = list(reversed(contents_no_notice))
 
         texts = []
         for i in range(0, min(count, len(contents_reversed))):
-            newTimeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
+            timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
             user_content = contents_reversed[i].find_all(attrs={'data-testid': 'post_message'})
             text = ' '.join(map(lambda x: x.text, user_content))
             print(text)
             texts.append(text)
 
-        self.writeTimeFile('p_' + pageName, newTimeID)
+        self.writeTimeData(pageName, 'Page', timeID)
         return texts
 
 
-    def groupFeed(self, groupName, count = 5):
+    def groupFeed(self, groupName):
+        if self.userName == "":
+            print("Need username")
+            return
         req = requests.get("https://www.facebook.com/groups/" + groupName)
         mainSoup = BeautifulSoup(req.content, 'html.parser')
 
@@ -118,23 +143,31 @@ class FacebookCrawler:
         soup = BeautifulSoup(bytes(commentData[1], 'utf-8'), 'html.parser')
         contents = soup.select('._3ccb')
 
-        newTimeID = oldTimeID = self.readTimeFile('g_' + groupName)
-        if oldTimeID != -1:
-            self.remDup(contents, oldTimeID)
+        timeID , count= self.getTimeData(groupName, 'Group')
+        if timeID != -1:
+            self.remDup(contents, timeID)
         contents_reversed = list(reversed(contents))
 
         texts = []
         for i in range(0, min(count, len(contents_reversed))):
-            newTimeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
+            timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
 
             user_content = contents_reversed[i].find_all(attrs={'data-testid':'post_message'})
             text = '\n[--Indented Text--]\n'.join(map(lambda x: x.text, user_content))
             print(text)
             texts.append(text)
 
-        self.writeTimeFile('g_' + groupName, newTimeID)
+        self.writeTimeData(groupName, 'Group', timeID)
         return texts
 
+    def autoRunFromFile(self):
+        result = []
+        for targ in self.targList['Page']:
+            result.append('[[Page Name: ' + targ + ']]' +  self.pageFeed(targ))
+        for targ in self.targList['Group']:
+            result.append('[[Group Name: ' + targ + ']]' + self.groupFeed(targ))
+        self.writeUserFile(self.targList)
+        return '\n'.join(result)
 if __name__ == "__main__":
     '''
     parser = argparse.ArgumentParser(description='Facebook 로그인')
@@ -154,6 +187,11 @@ if __name__ == "__main__":
         print('로그인 실패')
     '''
     pfc = FacebookCrawler()
+    pfc.set_user("ryu")
+    pfc.addPagetoList('SKKUBamboo')
+    pfc.addGrouptoList('KerasKorea', 5)
+    pfc.addGrouptoList('System.out.Coding')
+    pfc.autoRunFromFile()
     # pfc.groupFeed('System.out.Coding')
     pages = [
     #    'thisisgamecom',
@@ -163,13 +201,13 @@ if __name__ == "__main__":
     #    'ggyuggyuggyaggya',
     ]
 
-    for page in pages:
-        pfc.pageFeed(page, 100)
+    #for page in pages:
+    #    pfc.pageFeed(page)
 
     groups = [
         'KerasKorea',
         'System.out.Coding',
     ]
 
-    for group in groups:
-        pfc.groupFeed(group)
+    #for group in groups:
+    #    pfc.groupFeed(group)

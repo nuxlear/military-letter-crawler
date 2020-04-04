@@ -18,7 +18,7 @@ class NaverNews:
         self.soup = BeautifulSoup(newsPage.content, "html.parser")
 
     def getNewsTitles(self, newsType):
-        for child in self.soup.select("#ranking_10" + str(newsType.value) + " > ul"):
+        for child in self.soup.select("#ranking_10" + str(newsType) + " > ul"):
             print(child.get_text())
 
 class GoogleNews:
@@ -47,9 +47,10 @@ class Corona:
 
 #Main 4 test
 if __name__ == "__main__":
-    #naverNews = NaverNews()
-    #soup = naverNews.getNewsPage()
-    #naverNews.getNewsTitles(soup, naverNews.NewsType.POLITIC)
+    naverNews = NaverNews()
+    naverNews.getNewsPage()
+    for i in range(0, 5):
+        naverNews.getNewsTitles(i)
     #gNews = GoogleNews()
     #gNews.getNewsTitles(GoogleNews.CONST_HEADLINE_URL, 5)
     cor = Corona()
