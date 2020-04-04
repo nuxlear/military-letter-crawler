@@ -21,7 +21,7 @@ class NewsCrawler:
             texts = []
             for child in self.soup.select("#ranking_10" + str(newsType.value) + " > ul"):
                 texts.append(child.get_text())
-            return texts
+            return '\n'.join(texts)
 
     class GoogleNews:
         soup = ""
@@ -40,7 +40,7 @@ class NewsCrawler:
             texts = []
             for i in range(0, num):
                 texts.append(soup.select(".DY5T1d")[i].get_text())
-            return texts
+            return '\n'.join(texts)
 
     class Corona:
         def getTodayData(self):
@@ -48,7 +48,7 @@ class NewsCrawler:
             texts = []
             for child in soup.select(".liveNum > .liveNum"):
                 texts.append(re.sub('\n\+|\?\n|\n','',child.get_text().strip()))
-            return texts
+            return ' '.join(texts)
 
 #Main 4 test
 if __name__ == "__main__":

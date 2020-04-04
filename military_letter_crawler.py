@@ -132,9 +132,9 @@ class FacebookCrawler:
     def autoRunFromFile(self):
         result = []
         for targ in self.targList['Page']:
-            result.append('[[Page Name: ' + targ + ']]' + self.pageFeed(targ))
+            result.append('[[Page Name: ' + targ + ']]' + str(self.pageFeed(targ)))
         for targ in self.targList['Group']:
-            result.append('[[Group Name: ' + targ + ']]' + self.groupFeed(targ))
+            result.append('[[Group Name: ' + targ + ']]' + str(self.groupFeed(targ)))
         self.writeUserFile(self.targList)
         return '\n'.join(result)
 
@@ -199,6 +199,7 @@ class LetterClient:
         return False
 
     def send_letter(self, name, title, content):
+
         cafes = self.get_cafes()
         if name not in cafes:
             print(f'No Cafe with name: [{name}].')
@@ -208,7 +209,9 @@ class LetterClient:
             return False
         mgr_seq = self._get_mgr_seq(*cafes[name])
 
+
         chkedContent = self.splitContent(content)
+        print(chkedContent)
 
         for cont in chkedContent:
             self.send(mgr_seq, title, cont)
@@ -229,18 +232,26 @@ class LetterClient:
         }
 
         result = self._post(endpoint, data)
-        result = json.loads(result, encoding='utf-8')
+        #result = json.loads(result, encoding='utf-8')
         print(result)
 
     def splitContent(self, content):
         splited = content.split('\n')
         slen = 0
         bodies = []
-        for i in splited.size():
+        print(len(splited))
+        for i in range(0, len(splited)):
+            print('loop : ' + str(slen) + " " + str(len(splited[i])))
             if slen + len(splited[i]) > 1450:
-                bodies.append('\n'.join(splited[:i - 1] + '\n' +splited[i][:1450 - slen]))
+                bodies.append('\n'.join(splited[:i - 1]) + '\n' +splited[i][:1450 - slen])
                 bodies.append(self.splitContent(splited[i][1450-slen + 1:] + '\n' + '\n'.join(splited[i + 1:])))
-        return bodies
+                return bodies
+            slen += len(splited[i])
+            if i == 24:
+                bodies.append("\n".join(splited[:i]))
+                bodies.append(self.splitContent('\n'.join(splited[i + 1:])))
+                return bodies
+        return bodies.append(content)
 
     def get_cafes(self):
         endpoint = '/eduUnitCafe/viewEduUnitCafeMain.do'
@@ -347,7 +358,7 @@ class NewsCrawler:
             texts = []
             for child in self.soup.select("#ranking_10" + str(newsType.value) + " > ul"):
                 texts.append(child.get_text())
-            return texts
+            return '\n'.join(texts)
 
     class GoogleNews:
         soup = ""
@@ -366,7 +377,7 @@ class NewsCrawler:
             texts = []
             for i in range(0, num):
                 texts.append(soup.select(".DY5T1d")[i].get_text())
-            return texts
+            return '\n'.join(texts)
 
     class Corona:
         def getTodayData(self):
@@ -374,7 +385,7 @@ class NewsCrawler:
             texts = []
             for child in soup.select(".liveNum > .liveNum"):
                 texts.append(re.sub('\n\+|\?\n|\n','',child.get_text().strip()))
-            return texts
+            return ' '.join(texts)
 
 #Weather Crawler Class
 class WeatherCrawler:
@@ -407,3 +418,26 @@ class WeatherCrawler:
             result.append(self.parseWeatherInfo(child))
 
         return '\n'.join(result)
+
+if __name__ == "__main__":
+
+    fbc = FacebookCrawler()
+    fbc.set_user('ryu')
+    fbcResult = fbc.autoRunFromFile()
+    print(fbcResult)
+    wtc = WeatherCrawler()
+    wtcResult = wtc.getWeather()
+
+    newsList = []
+    nc = NewsCrawler.NaverNews()
+    nc.getNewsPage()
+    newsList.append(nc.getNewsTitles(nc.NewsType.LIFECULTURE))
+    newsList.append(nc.getNewsTitles(nc.NewsType.WORLD))
+
+    cc = NewsCrawler.Corona()
+    newsList.append(cc.getTodayData())
+
+    lc = LetterClient()
+    #print('\n'.join(newsList))
+    lc.login("rshtiger@naver.com", "")
+    lc.send_letter("김재이", "newsTest", fbcResult)
