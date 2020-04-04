@@ -70,8 +70,14 @@ class LetterClient:
         if cafes[name] is None:
             print(f'Cafe[{name}] is not open yet.')
             return False
-
         mgr_seq = self._get_mgr_seq(*cafes[name])
+
+        chkedContent = self.splitContent(content)
+
+        for cont in chkedContent:
+            self.send(mgr_seq, title, cont)
+
+    def send(self,mgr_seq, title, content):
 
         endpoint = '/consolLetter/insertConsolLetterA.do'
         data = {
@@ -88,6 +94,17 @@ class LetterClient:
 
         result = self._post(endpoint, data)
         result = json.loads(result, encoding='utf-8')
+        print(result)
+
+    def splitContent(self, content):
+        splited = content.split('\n')
+        slen = 0
+        bodies = []
+        for i in splited.size():
+            if slen + len(splited[i]) > 1450:
+                bodies.append('\n'.join(splited[:i - 1] + '\n' +splited[i][:1450 - slen]))
+                bodies.append(self.splitContent(splited[i][1450-slen + 1:] + '\n' + '\n'.join(splited[i + 1:])))
+        return bodies
 
     def get_cafes(self):
         endpoint = '/eduUnitCafe/viewEduUnitCafeMain.do'
