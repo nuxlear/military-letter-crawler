@@ -55,8 +55,8 @@ if __name__ == "__main__":
     naverNews = NewsCrawler.NaverNews()
     naverNews.getNewsPage()
     for i in naverNews.NewsType:
-        naverNews.getNewsTitles(i)
+        print(naverNews.getNewsTitles(i))
     #gNews = GoogleNews()
     #gNews.getNewsTitles(GoogleNews.CONST_HEADLINE_URL, 5)
     cor = NewsCrawler.Corona()
-    cor.getTodayData()
+    print(cor.getTodayData())

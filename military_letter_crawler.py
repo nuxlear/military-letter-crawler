@@ -59,10 +59,12 @@ class FacebookCrawler:
             json.dump(self.targList, w, indent="\t")
 
     def remDup(self, html, oldTimeID):
+        bup = html[:]
         for child in reversed(html):
-            html.pop()
+            bup.pop()
             if(child.find('a', {'class':'_5pcq'})['href'] == oldTimeID):
-                break
+                return bup
+        return html
 
     def remNotice(self, respSoup):
         i = 0
@@ -84,11 +86,11 @@ class FacebookCrawler:
         contents_no_notice = [x for x in contents if not x.select('._449j')]
 
         timeID, count = self.getTimeData(pageName, 'Page')
-
         if timeID != -1:
-            self.remDup(contents_no_notice, timeID)
+            contents_no_notice = self.remDup(contents_no_notice, timeID)
         contents_reversed = list(reversed(contents_no_notice))
 
+        print(contents_reversed)
         texts = []
         for i in range(0, min(count, len(contents_reversed))):
             timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
@@ -114,7 +116,7 @@ class FacebookCrawler:
 
         timeID , count= self.getTimeData(groupName, 'Group')
         if timeID != -1:
-            self.remDup(contents, timeID)
+            contents = self.remDup(contents, timeID)
         contents_reversed = list(reversed(contents))
 
         texts = []
@@ -203,8 +205,12 @@ class LetterClient:
 
 
         for cont in chkedContent:
+            splitForNL = cont.split("\n")
+            pkg = []
+            for line in splitForNL:
+                pkg.append('<p>' + line + '</p>')
             print("cont-------------" + cont + "\n")
-            self.send(name, title, cont)
+            self.send(name, title, ''.join(pkg))
 
     def send(self, name, title, content):
         cafes = self.get_cafes()
@@ -416,25 +422,26 @@ class WeatherCrawler:
 
         return '\n'.join(result)
 
+
 if __name__ == "__main__":
 
     fbc = FacebookCrawler()
     fbc.set_user('ryu')
     fbcResult = fbc.autoRunFromFile()
     print(fbcResult)
-    wtc = WeatherCrawler()
-    wtcResult = wtc.getWeather()
+    #wtc = WeatherCrawler()
+    #wtcResult = wtc.getWeather()
 
-    newsList = []
-    nc = NewsCrawler.NaverNews()
-    nc.getNewsPage()
-    newsList.append(nc.getNewsTitles(nc.NewsType.LIFECULTURE))
-    newsList.append(nc.getNewsTitles(nc.NewsType.WORLD))
+    #newsList = []
+    #nc = NewsCrawler.NaverNews()
+    #nc.getNewsPage()
+    #newsList.append(nc.getNewsTitles(nc.NewsType.LIFECULTURE))
+    #newsList.append(nc.getNewsTitles(nc.NewsType.WORLD))
 
-    cc = NewsCrawler.Corona()
-    newsList.append(cc.getTodayData())
+    #cc = NewsCrawler.Corona()
+    #newsList.append(cc.getTodayData())
 
     lc = LetterClient()
-    #print('\n'.join(newsList))
+
     lc.login("rshtiger@naver.com", "")
-    lc.send_letter("김재이", ".", fbcResult)
+    lc.send_letter("김재이", "Facebook_SKKUBamboo", fbcResult)
