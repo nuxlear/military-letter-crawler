@@ -63,6 +63,17 @@ class LetterClient:
         return False
 
     def send_letter(self, name, title, content):
+        chkedContent = self.splitContent(content)
+
+        for cont in chkedContent:
+            splitForNL = cont.split("\n")
+            pkg = []
+            for line in splitForNL:
+                pkg.append('<p>' + line + '</p>')
+            print("cont-------------" + cont + "\n")
+            self.send(name, title, ''.join(pkg))
+
+    def send(self, name, title, content):
         cafes = self.get_cafes()
         if name not in cafes:
             print(f'No Cafe with name: [{name}].')
@@ -70,15 +81,8 @@ class LetterClient:
         if cafes[name] is None:
             print(f'Cafe[{name}] is not open yet.')
             return False
+
         mgr_seq = self._get_mgr_seq(*cafes[name])
-
-        chkedContent = self.splitContent(content)
-
-        for cont in chkedContent:
-            self.send(mgr_seq, title, cont)
-
-    def send(self,mgr_seq, title, content):
-
         endpoint = '/consolLetter/insertConsolLetterA.do'
         data = {
             'boardDiv': '',
@@ -93,17 +97,24 @@ class LetterClient:
         }
 
         result = self._post(endpoint, data)
-        result = json.loads(result, encoding='utf-8')
+        #result = json.loads(result, encoding='utf-8')
         print(result)
 
     def splitContent(self, content):
         splited = content.split('\n')
         slen = 0
         bodies = []
-        for i in splited.size():
+        for i in range(0, len(splited)):
             if slen + len(splited[i]) > 1450:
-                bodies.append('\n'.join(splited[:i - 1] + '\n' +splited[i][:1450 - slen]))
-                bodies.append(self.splitContent(splited[i][1450-slen + 1:] + '\n' + '\n'.join(splited[i + 1:])))
+                bodies.append('\n'.join(splited[:i - 1]) + '\n' +splited[i][:1450 - slen])
+                bodies += self.splitContent(splited[i][1450-slen:] + '\n' + '\n'.join(splited[i + 1:]))
+                return bodies
+            slen += len(splited[i])
+            if i == 24:
+                bodies.append("\n".join(splited[:i]))
+                bodies += self.splitContent('\n'.join(splited[i + 1:]))
+                return bodies
+        bodies.append(content)
         return bodies
 
     def get_cafes(self):

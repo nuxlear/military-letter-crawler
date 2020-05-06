@@ -3,3 +3,6 @@
 
 # Mac OS X
 .DS_Store
+
+# User data file
+*.dat

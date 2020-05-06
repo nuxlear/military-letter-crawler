@@ -39,7 +39,7 @@ def login(session, email, password):
 
 # --Class PageFeed : Get facebook page/group's writing--
 '''
-Uage
+Usage
 fbc = FacebookCrawler()
 fbc.set_user("username")
 
@@ -90,10 +90,12 @@ class FacebookCrawler:
             json.dump(self.targList, w, indent="\t")
 
     def remDup(self, html, oldTimeID):
+        bup = html[:]
         for child in reversed(html):
-            html.pop()
+            bup.pop()
             if(child.find('a', {'class':'_5pcq'})['href'] == oldTimeID):
-                break;
+                return bup
+        return html
 
     def remNotice(self, respSoup):
         i = 0
@@ -115,11 +117,11 @@ class FacebookCrawler:
         contents_no_notice = [x for x in contents if not x.select('._449j')]
 
         timeID, count = self.getTimeData(pageName, 'Page')
-
         if timeID != -1:
-            self.remDup(contents_no_notice, timeID)
+            contents_no_notice = self.remDup(contents_no_notice, timeID)
         contents_reversed = list(reversed(contents_no_notice))
 
+        print(contents_reversed)
         texts = []
         for i in range(0, min(count, len(contents_reversed))):
             timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
@@ -129,7 +131,7 @@ class FacebookCrawler:
             texts.append(text)
 
         self.writeTimeData(pageName, 'Page', timeID)
-        return texts
+        return '\n'.join(texts)
 
 
     def groupFeed(self, groupName):
@@ -145,7 +147,7 @@ class FacebookCrawler:
 
         timeID , count= self.getTimeData(groupName, 'Group')
         if timeID != -1:
-            self.remDup(contents, timeID)
+            contents = self.remDup(contents, timeID)
         contents_reversed = list(reversed(contents))
 
         texts = []
@@ -158,16 +160,18 @@ class FacebookCrawler:
             texts.append(text)
 
         self.writeTimeData(groupName, 'Group', timeID)
-        return texts
+        return '\n'.join(texts)
 
     def autoRunFromFile(self):
         result = []
         for targ in self.targList['Page']:
-            result.append('[[Page Name: ' + targ + ']]' +  self.pageFeed(targ))
+            result.append('[[Page Name: ' + targ + ']]' + str(self.pageFeed(targ)))
         for targ in self.targList['Group']:
-            result.append('[[Group Name: ' + targ + ']]' + self.groupFeed(targ))
+            result.append('[[Group Name: ' + targ + ']]' + str(self.groupFeed(targ)))
         self.writeUserFile(self.targList)
         return '\n'.join(result)
+
+
 if __name__ == "__main__":
     '''
     parser = argparse.ArgumentParser(description='Facebook 로그인')
