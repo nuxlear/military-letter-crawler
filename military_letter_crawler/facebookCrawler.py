@@ -52,12 +52,12 @@ class FacebookCrawler:
     userName = ""
     targList = dict()
 
-    def set_user(self, uname):
+    def setUser(self, uname):
         self.userName = uname
         filePath = 'user_' + uname + '.dat'
         if os.path.isfile(filePath):
             with open(filePath, encoding='utf-8') as r:
-               self.targList = json.load(r)
+                self.targList = json.load(r)
             return
         self.initDict()
 
@@ -67,19 +67,18 @@ class FacebookCrawler:
 
     def addPagetoList(self, page_Name, count = 5):
         if page_Name in self.targList['Page']:
-            return
-        self.targList['Page'][page_Name] = dict()
-        self.targList["Page"][page_Name]['tData'] = ""
-        self.targList['Page'][page_Name]['count'] = count
+            return False
+        self.targList['Page'][page_Name] = {'tData': "", 'count': count}
+        return True
 
     def addGrouptoList(self, group_Name, count = 5):
         if group_Name in self.targList['Group']:
             return
-        self.targList['Group'][group_Name] = dict()
-        self.targList['Group'][group_Name]['tData'] = ""
-        self.targList['Group'][group_Name]['count'] = count
+        self.targList['Group'][group_Name] = {'tData': "", 'count': count}
+        return True
 
-    def getTimeData(self, targName, targType): #If page doesn't exist in file, return -1
+    def getTimeData(self, targName, targType):
+        # If page doesn't exist in file, return -1
         return self.targList[targType][targName]["tData"] if self.targList[targType][targName]['tData'] != "" else -1, self.targList[targType][targName]['count']
 
     def writeTimeData(self, pageName, targType, timeData):
@@ -90,17 +89,19 @@ class FacebookCrawler:
             json.dump(self.targList, w, indent="\t")
 
     def remDup(self, html, oldTimeID):
+        '''Remove duplicated feeds which are already sent. '''
         bup = html[:]
         for child in reversed(html):
             bup.pop()
-            if(child.find('a', {'class':'_5pcq'})['href'] == oldTimeID):
+            if child.find('a', {'class':'_5pcq'})['href'] == oldTimeID:
                 return bup
         return html
 
     def remNotice(self, respSoup):
+        '''Remove notice feed. '''
         i = 0
         for child in respSoup:
-            if(child.select('._449j')):
+            if child.select('._449j'):
                 i += 1
             else:
                 break
@@ -109,7 +110,8 @@ class FacebookCrawler:
     def pageFeed(self, pageName):
         if self.userName == "":
             print("Need username")
-            return
+            return None
+
         req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
         soup = BeautifulSoup(req.content, "html.parser")
 
@@ -133,11 +135,11 @@ class FacebookCrawler:
         self.writeTimeData(pageName, 'Page', timeID)
         return '\n'.join(texts)
 
-
     def groupFeed(self, groupName):
         if self.userName == "":
             print("Need username")
             return
+
         req = requests.get("https://www.facebook.com/groups/" + groupName)
         mainSoup = BeautifulSoup(req.content, 'html.parser')
 

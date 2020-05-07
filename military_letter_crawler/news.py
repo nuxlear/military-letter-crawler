@@ -2,6 +2,8 @@ from bs4 import BeautifulSoup
 import requests
 from enum import Enum
 import re
+
+
 class NewsCrawler:
     class NaverNews:
         soup = ""
