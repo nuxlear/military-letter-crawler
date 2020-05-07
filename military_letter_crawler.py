@@ -17,48 +17,127 @@ fbc.auto~~.
 or
 fbc.pageFeed(...)
 '''
-class FacebookCrawler:
-    userName = ""
-    targList = dict()
+class UserFileManager:
+    username = ""
+    userdata = []
 
-    def set_user(self, uname):
-        self.userName = uname
-        filePath = 'user_' + uname + '.dat'
+    def __init__(self, username):
+        self.username = username
+
+    def addString(self, string):
+        self.userdata += ["string", string]
+
+    def addFunction(self, featName, userdata):
+        self.userdata += ["function", featName, userdata]
+
+    def getData(self):
+        return self.userdata
+
+    def writeFile(self):
+        with open('user_' + self.username + '.dat', mode='wt', encoding='utf-8') as w:
+            json.dump(self.userdata, w, indent="\t")
+
+    def readFile(self):
+        filePath = 'user_' + self.username + '.dat'
         if os.path.isfile(filePath):
+            print("File exists. Start reading user data file.")
             with open(filePath, encoding='utf-8') as r:
-               self.targList = json.load(r)
-            return
-        self.initDict()
+                self.userdata = json.load(r)
+            return 0
+        print("File not exist. You should create user data file with UserDataFileManager class.")
+        return -1
+
+class AutoBodyMaker:
+    username = ""
+    userdata = ""
+
+    def __init(self, username):
+        self.username = username
+
+    def run(self):
+        self.userdata = self.__readFileData()
+
+
+
+    def __readFileData(self):
+        udfm = UserFileManager(self.username)
+        udfm.readFile()
+        return udfm.getData()
+
+class FacebookCrawler:
+    class Type(Enum):
+        PAGE  = 0
+        GROUP = 1
+
+    targList = dict()
 
     def initDict(self):
         self.targList['Page'] = dict()
         self.targList['Group'] = dict()
 
-    def addPagetoList(self, page_Name, count = 5):
-        if page_Name in self.targList['Page']:
-            return
-        self.targList['Page'][page_Name] = dict()
-        self.targList["Page"][page_Name]['tData'] = ""
-        self.targList['Page'][page_Name]['count'] = count
+    def readListfromString(self, strData):
+        self.targList = json.loads(strData)
 
-    def addGrouptoList(self, group_Name, count = 5):
-        if group_Name in self.targList['Group']:
+    def addList(self, page_Name, type, count = 5):
+        if page_Name in self.targList[type.name]:
             return
-        self.targList['Group'][group_Name] = dict()
-        self.targList['Group'][group_Name]['tData'] = ""
-        self.targList['Group'][group_Name]['count'] = count
+        self.targList[type.name][page_Name] = dict()
+        self.targList[type.name][page_Name]['tData'] = ""
+        self.targList[type.name][page_Name]['count'] = count
 
-    def getTimeData(self, targName, targType): #If page doesn't exist in file, return -1
+    def pageFeed(self, pageName):
+        req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
+        soup = BeautifulSoup(req.content, "html.parser")
+
+        contents = soup.select('.userContentWrapper')
+        contents_no_notice = [x for x in contents if not x.select('._449j')]
+
+        return self.__getFeed(self.type.PAGE, pageName, contents_no_notice)
+
+
+    def groupFeed(self, groupName):
+        req = requests.get("https://www.facebook.com/groups/" + groupName)
+        mainSoup = BeautifulSoup(req.content, 'html.parser')
+
+        commentData = mainSoup.find_all(string=lambda text: isinstance(text, Comment))
+        soup = BeautifulSoup(bytes(commentData[1], 'utf-8'), 'html.parser')
+        contents = soup.select('._3ccb')
+
+        return self.__getFeed(self.type.GROUP, groupName, contents)
+
+    def autoRunWithJSON(self):
+        result = []
+        for targ in self.targList['Page']:
+            result.append('[[Page Name: ' + targ + ']]' + str(self.pageFeed(targ)))
+        for targ in self.targList['Group']:
+            result.append('[[Group Name: ' + targ + ']]' + str(self.groupFeed(targ)))
+        self.writeUserFile(self.targList)
+        return '\n'.join(result)
+
+#private:
+    def __getFeed(self, type, name, contents):
+        timeID, count = self.getTimeData(name, type.name)
+        if timeID != -1:
+            contents = self.remDup(contents, timeID)
+        contents_reversed = list(reversed(contents))
+
+        texts = []
+        for i in range(0, min(count, len(contents_reversed))):
+            timeID = contents_reversed[i].find('a', {'class': '_5pcq'})['href']
+            user_content = contents_reversed[i].find_all(attrs={'data-testid': 'post_message'})
+            text = '\n[--Indented Text--]\n'.join(map(lambda x: x.text, user_content))
+            print(text)
+            texts.append(text)
+
+        self.writeTimeData(name, type.name, timeID)
+
+    def __getTimeData(self, targName, targType): #If page doesn't exist in file, return -1
         return self.targList[targType][targName]["tData"] if self.targList[targType][targName]['tData'] != "" else -1, self.targList[targType][targName]['count']
 
-    def writeTimeData(self, pageName, targType, timeData):
+    def __writeTimeData(self, pageName, targType, timeData):
         self.targList[targType][pageName]['tData'] = timeData
 
-    def writeUserFile(self, data):
-        with open('user_' + self.userName + '.dat', mode='wt', encoding='utf-8') as w:
-            json.dump(self.targList, w, indent="\t")
-
-    def remDup(self, html, oldTimeID):
+    def __removeDuplication(self, html, oldTimeID):
         bup = html[:]
         for child in reversed(html):
             bup.pop()
@@ -66,7 +145,7 @@ class FacebookCrawler:
                 return bup
         return html
 
-    def remNotice(self, respSoup):
+    def __removeNotice(self, respSoup):
         i = 0
         for child in respSoup:
             if(child.select('._449j')):
@@ -75,70 +154,8 @@ class FacebookCrawler:
                 break
         return respSoup[i : int(len(respSoup))]
 
-    def pageFeed(self, pageName):
-        if self.userName == "":
-            print("Need username")
-            return
-        req = requests.get("https://www.facebook.com/pg/" + pageName + "/posts/?ref=page_internal")
-        soup = BeautifulSoup(req.content, "html.parser")
-
-        contents = soup.select('.userContentWrapper')
-        contents_no_notice = [x for x in contents if not x.select('._449j')]
-
-        timeID, count = self.getTimeData(pageName, 'Page')
-        if timeID != -1:
-            contents_no_notice = self.remDup(contents_no_notice, timeID)
-        contents_reversed = list(reversed(contents_no_notice))
-
-        print(contents_reversed)
-        texts = []
-        for i in range(0, min(count, len(contents_reversed))):
-            timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
-            user_content = contents_reversed[i].find_all(attrs={'data-testid': 'post_message'})
-            text = ' '.join(map(lambda x: x.text, user_content))
-            print(text)
-            texts.append(text)
-
-        self.writeTimeData(pageName, 'Page', timeID)
-        return '\n'.join(texts)
 
 
-    def groupFeed(self, groupName):
-        if self.userName == "":
-            print("Need username")
-            return
-        req = requests.get("https://www.facebook.com/groups/" + groupName)
-        mainSoup = BeautifulSoup(req.content, 'html.parser')
-
-        commentData = mainSoup.find_all(string=lambda text: isinstance(text, Comment))
-        soup = BeautifulSoup(bytes(commentData[1], 'utf-8'), 'html.parser')
-        contents = soup.select('._3ccb')
-
-        timeID , count= self.getTimeData(groupName, 'Group')
-        if timeID != -1:
-            contents = self.remDup(contents, timeID)
-        contents_reversed = list(reversed(contents))
-
-        texts = []
-        for i in range(0, min(count, len(contents_reversed))):
-            timeID = contents_reversed[i].find('a', {'class':'_5pcq'})['href']
-
-            user_content = contents_reversed[i].find_all(attrs={'data-testid':'post_message'})
-            text = '\n[--Indented Text--]\n'.join(map(lambda x: x.text, user_content))
-            print(text)
-            texts.append(text)
-
-        self.writeTimeData(groupName, 'Group', timeID)
-        return '\n'.join(texts)
-
-    def autoRunFromFile(self):
-        result = []
-        for targ in self.targList['Page']:
-            result.append('[[Page Name: ' + targ + ']]' + str(self.pageFeed(targ)))
-        for targ in self.targList['Group']:
-            result.append('[[Group Name: ' + targ + ']]' + str(self.groupFeed(targ)))
-        self.writeUserFile(self.targList)
-        return '\n'.join(result)
 
 
 #Letter Sending Class
@@ -382,14 +399,6 @@ class NewsCrawler:
                 texts.append(soup.select(".DY5T1d")[i].get_text())
             return '\n'.join(texts)
 
-    class Corona:
-        def getTodayData(self):
-            soup = BeautifulSoup(requests.get("http://ncov.mohw.go.kr/").content, "html.parser")
-            texts = []
-            for child in soup.select(".liveNum > .liveNum"):
-                texts.append(re.sub('\n\+|\?\n|\n','',child.get_text().strip()))
-            return ' '.join(texts)
-
 #Weather Crawler Class
 class WeatherCrawler:
 
@@ -442,6 +451,3 @@ if __name__ == "__main__":
     #newsList.append(cc.getTodayData())
 
     lc = LetterClient()
-
-    lc.login("rshtiger@naver.com", "")
-    lc.send_letter("김재이", "Facebook_SKKUBamboo", fbcResult)

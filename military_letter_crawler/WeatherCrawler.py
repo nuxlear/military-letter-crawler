@@ -34,5 +34,7 @@ class WeatherCrawler:
 
 
 if __name__ == "__main__":
+    while(1)
+        print("hello")
     wc = WeatherCrawler()
     print(wc.getWeather())
