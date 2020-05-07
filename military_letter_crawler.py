@@ -45,7 +45,7 @@ class UserFileManager:
             for data in datas:
                 self.userdata.append(data.split("*::*"))
             return 0
-        print("File not exist. You should create user data file with UserDataFileManager class.")
+        print("[LOG] File not exist. You should create user data file with UserDataFileManager class.")
         return -1
 
 class AutoBodyMaker:
@@ -59,8 +59,10 @@ class AutoBodyMaker:
     def run(self):
         self.userdata = self.__readFileData()
         for data in self.userdata:
+            #Parse arguments for function call
             args = dict(arg for arg in data[2].split(",")) if data[2].find(",") != -1 else data[2]
             self.bodyResult += getattr(getattr(sys.modules[__name__],data[0]), data[1])(args) + "<br>"
+            print("[LOG] " + data[1] + " function successfully called")
         return self.bodyResult
 
     def __readFileData(self):
